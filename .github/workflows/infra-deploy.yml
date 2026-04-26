@@ -105,7 +105,7 @@ jobs:
       - name: Provision infrastructure with Bicep
         run: |
           az deployment sub create \
-            --name "rltech-rag-infra" \
+            --name "rltech-rag-infra-${{ inputs.location }}" \
             --location "${{ inputs.location }}" \
             --template-file infra/main.bicep \
             --parameters \
@@ -176,7 +176,7 @@ jobs:
         id: read-outputs
         run: |
           OUTPUTS=$(az deployment sub show \
-            --name "rltech-rag-infra" \
+            --name "rltech-rag-infra-${{ inputs.location }}" \
             --query "properties.outputs" \
             --output json)
 

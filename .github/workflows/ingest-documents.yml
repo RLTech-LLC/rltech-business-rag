@@ -3,6 +3,22 @@ name: Ingest Business Documents
 on:
   workflow_dispatch:
     inputs:
+      location:
+        description: "Azure region used when provisioning infrastructure (must match the Provision Infrastructure workflow)"
+        required: false
+        default: "eastus2"
+        type: choice
+        options:
+          - eastus
+          - eastus2
+          - westus2
+          - northcentralus
+          - swedencentral
+          - westeurope
+          - northeurope
+          - uksouth
+          - australiaeast
+          - canadacentral
       data_path:
         description: "Glob path to documents (relative to repo root, e.g. data/ or data/contracts/)"
         required: false
@@ -67,7 +83,7 @@ jobs:
         id: resources
         run: |
           DEPLOY_OUTPUTS=$(az deployment sub show \
-            --name "rltech-rag-infra" \
+            --name "rltech-rag-infra-${{ inputs.location || 'eastus2' }}" \
             --query "properties.outputs" \
             --output json 2>/dev/null || echo "{}")
 

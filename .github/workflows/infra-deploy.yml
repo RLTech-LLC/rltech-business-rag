@@ -105,6 +105,8 @@ jobs:
               searchQueryLanguage="en-us" \
               searchQuerySpeller="lexicon" \
               searchServiceSemanticRankerLevel="free" \
+              searchServiceQueryRewriting=false \
+              searchFieldNameEmbedding="embedding3" \
               storageSkuName="Standard_LRS" \
               deploymentTarget="containerapps" \
               azureContainerAppsWorkloadProfile="Consumption" \

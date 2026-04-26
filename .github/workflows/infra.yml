@@ -7,6 +7,12 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  RESOURCE_GROUP: rg-rltech-rag-prod
+  LOCATION: eastus
+  LOG_ANALYTICS_WORKSPACE: log-rltech-rag-prod
+  CONTAINER_APP_ENV: cae-rltech-rag-prod
+
 jobs:
   infra:
     runs-on: ubuntu-latest
@@ -23,29 +29,29 @@ jobs:
       - name: Create Resource Group
         run: |
           az group create \
-            --name rg-rltech-rag-prod \
-            --location eastus
+            --name "$RESOURCE_GROUP" \
+            --location "$LOCATION"
 
       - name: Create Log Analytics Workspace
         run: |
           az monitor log-analytics workspace create \
-            --resource-group rg-rltech-rag-prod \
-            --workspace-name log-rltech-rag-prod \
-            --location eastus
+            --resource-group "$RESOURCE_GROUP" \
+            --workspace-name "$LOG_ANALYTICS_WORKSPACE" \
+            --location "$LOCATION"
 
       - name: Create Container Apps Environment
         run: |
           WORKSPACE_ID=$(az monitor log-analytics workspace show \
-            --resource-group rg-rltech-rag-prod \
-            --workspace-name log-rltech-rag-prod \
+            --resource-group "$RESOURCE_GROUP" \
+            --workspace-name "$LOG_ANALYTICS_WORKSPACE" \
             --query customerId -o tsv)
           WORKSPACE_KEY=$(az monitor log-analytics workspace get-shared-keys \
-            --resource-group rg-rltech-rag-prod \
-            --workspace-name log-rltech-rag-prod \
+            --resource-group "$RESOURCE_GROUP" \
+            --workspace-name "$LOG_ANALYTICS_WORKSPACE" \
             --query primarySharedKey -o tsv)
           az containerapp env create \
-            --name cae-rltech-rag-prod \
-            --resource-group rg-rltech-rag-prod \
-            --location eastus \
+            --name "$CONTAINER_APP_ENV" \
+            --resource-group "$RESOURCE_GROUP" \
+            --location "$LOCATION" \
             --logs-workspace-id "$WORKSPACE_ID" \
             --logs-workspace-key "$WORKSPACE_KEY"

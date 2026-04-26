@@ -9,10 +9,19 @@ logger = logging.getLogger("scripts")
 
 
 def load_azd_env():
-    """Get path to current azd env file and load file using python-dotenv"""
+    """Get path to current azd env file and load file using python-dotenv.
+
+    If azd is not installed or not authenticated (e.g., running in CI with
+    environment variables already set via AZURE_USE_CLI_CREDENTIAL=true), this
+    function logs a warning and returns without modifying the environment.
+    """
     result = subprocess.run("azd env list -o json", shell=True, capture_output=True, text=True)
     if result.returncode != 0:
-        raise Exception("Error loading azd env")
+        logger.warning(
+            "azd env list failed (azd may not be installed or authenticated). "
+            "Relying on environment variables already set in the current shell."
+        )
+        return
     env_json = json.loads(result.stdout)
     env_file_path = None
     for entry in env_json:

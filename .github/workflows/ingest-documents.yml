@@ -1,0 +1,164 @@
+name: Ingest Business Documents
+
+on:
+  workflow_dispatch:
+    inputs:
+      data_path:
+        description: "Glob path to documents (relative to repo root, e.g. data/ or data/contracts/)"
+        required: false
+        default: "data/"
+      remove_all:
+        description: "Remove ALL existing documents from the index before ingesting"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      verbose:
+        description: "Enable verbose logging"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+# GitHub Actions OIDC — no long-lived secrets needed.
+# Reference: https://learn.microsoft.com/azure/developer/github/connect-from-azure
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  ingest:
+    name: Run Document Ingestion
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Install uv for fast, reproducible Python dependency management.
+      # Reference: https://github.com/astral-sh/uv
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.9.5"
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          uv pip install --system -r app/backend/requirements.txt
+
+      # Authenticate using OIDC federated identity — no client secret stored.
+      # Reference: https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Retrieve all resource names from the Bicep deployment outputs.
+      # This avoids hardcoding names and stays in sync with what was actually deployed.
+      - name: Resolve Azure resource names from deployment
+        id: resources
+        run: |
+          DEPLOY_OUTPUTS=$(az deployment sub show \
+            --name "rltech-rag-infra" \
+            --query "properties.outputs" \
+            --output json 2>/dev/null || echo "{}")
+
+          extract() { echo "$DEPLOY_OUTPUTS" | jq -r ".$1.value // empty"; }
+
+          RESOURCE_GROUP=$(extract AZURE_RESOURCE_GROUP)
+          if [ -z "$RESOURCE_GROUP" ]; then
+            RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME }}"
+          fi
+
+          OPENAI_SERVICE=$(extract AZURE_OPENAI_SERVICE)
+          OPENAI_ENDPOINT="https://${OPENAI_SERVICE}.openai.azure.com"
+          SEARCH_SERVICE=$(extract AZURE_SEARCH_SERVICE)
+          SEARCH_INDEX=$(extract AZURE_SEARCH_INDEX)
+          STORAGE_ACCOUNT=$(extract AZURE_STORAGE_ACCOUNT)
+          STORAGE_CONTAINER=$(extract AZURE_STORAGE_CONTAINER)
+          STORAGE_RESOURCE_GROUP=$(extract AZURE_STORAGE_RESOURCE_GROUP)
+          DOC_INTEL_SERVICE=$(extract AZURE_DOCUMENTINTELLIGENCE_SERVICE)
+          EMB_MODEL=$(extract AZURE_OPENAI_EMB_MODEL_NAME)
+          EMB_DEPLOYMENT=$(extract AZURE_OPENAI_EMB_DEPLOYMENT)
+          EMB_DIMENSIONS=$(extract AZURE_OPENAI_EMB_DIMENSIONS)
+          TENANT_ID=$(extract AZURE_TENANT_ID)
+
+          echo "resource_group=$RESOURCE_GROUP"               >> "$GITHUB_OUTPUT"
+          echo "openai_service=$OPENAI_SERVICE"               >> "$GITHUB_OUTPUT"
+          echo "openai_endpoint=$OPENAI_ENDPOINT"             >> "$GITHUB_OUTPUT"
+          echo "search_service=$SEARCH_SERVICE"               >> "$GITHUB_OUTPUT"
+          echo "search_index=$SEARCH_INDEX"                   >> "$GITHUB_OUTPUT"
+          echo "storage_account=$STORAGE_ACCOUNT"             >> "$GITHUB_OUTPUT"
+          echo "storage_container=$STORAGE_CONTAINER"         >> "$GITHUB_OUTPUT"
+          echo "storage_resource_group=$STORAGE_RESOURCE_GROUP" >> "$GITHUB_OUTPUT"
+          echo "doc_intel_service=$DOC_INTEL_SERVICE"         >> "$GITHUB_OUTPUT"
+          echo "emb_model=$EMB_MODEL"                         >> "$GITHUB_OUTPUT"
+          echo "emb_deployment=$EMB_DEPLOYMENT"               >> "$GITHUB_OUTPUT"
+          echo "emb_dimensions=$EMB_DIMENSIONS"               >> "$GITHUB_OUTPUT"
+          echo "tenant_id=$TENANT_ID"                         >> "$GITHUB_OUTPUT"
+
+          echo "### Resolved Resources" >> "$GITHUB_STEP_SUMMARY"
+          echo "- OpenAI: \`$OPENAI_SERVICE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- AI Search: \`$SEARCH_SERVICE/$SEARCH_INDEX\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Storage: \`$STORAGE_ACCOUNT/$STORAGE_CONTAINER\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Document Intelligence: \`$DOC_INTEL_SERVICE\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # Run prepdocs.py with the az CLI credential (azure/login@v2 already authenticated az).
+      # AZURE_USE_CLI_CREDENTIAL=true instructs prepdocs.py to use AzureCliCredential
+      # instead of AzureDeveloperCliCredential, avoiding the azd dependency in CI.
+      - name: Ingest documents
+        env:
+          # Tell prepdocs.py to use az CLI credential (set by azure/login@v2)
+          AZURE_USE_CLI_CREDENTIAL: "true"
+          # All variables below are read by prepdocs.py via os.environ
+          AZURE_TENANT_ID: ${{ steps.resources.outputs.tenant_id }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          OPENAI_HOST: "azure"
+          AZURE_OPENAI_SERVICE: ${{ steps.resources.outputs.openai_service }}
+          AZURE_OPENAI_ENDPOINT: ${{ steps.resources.outputs.openai_endpoint }}
+          AZURE_OPENAI_EMB_MODEL_NAME: ${{ steps.resources.outputs.emb_model }}
+          AZURE_OPENAI_EMB_DEPLOYMENT: ${{ steps.resources.outputs.emb_deployment }}
+          AZURE_OPENAI_EMB_DIMENSIONS: ${{ steps.resources.outputs.emb_dimensions }}
+          AZURE_SEARCH_SERVICE: ${{ steps.resources.outputs.search_service }}
+          AZURE_SEARCH_INDEX: ${{ steps.resources.outputs.search_index }}
+          AZURE_SEARCH_FIELD_NAME_EMBEDDING: "embedding3"
+          AZURE_STORAGE_ACCOUNT: ${{ steps.resources.outputs.storage_account }}
+          AZURE_STORAGE_CONTAINER: ${{ steps.resources.outputs.storage_container }}
+          AZURE_STORAGE_RESOURCE_GROUP: ${{ steps.resources.outputs.storage_resource_group }}
+          AZURE_DOCUMENTINTELLIGENCE_SERVICE: ${{ steps.resources.outputs.doc_intel_service }}
+          USE_VECTORS: "true"
+          USE_MULTIMODAL: "false"
+          USE_MEDIA_DESCRIBER_AZURE_CU: "false"
+        run: |
+          REMOVE_FLAG=""
+          if [ "${{ inputs.remove_all }}" = "true" ]; then
+            REMOVE_FLAG="--removeall"
+          fi
+
+          VERBOSE_FLAG=""
+          if [ "${{ inputs.verbose }}" = "true" ]; then
+            VERBOSE_FLAG="--verbose"
+          fi
+
+          cd app/backend
+          python prepdocs.py \
+            "../../${{ inputs.data_path }}*" \
+            $REMOVE_FLAG \
+            $VERBOSE_FLAG
+
+      - name: Ingestion summary
+        if: always()
+        run: |
+          echo "### Ingestion Complete :books:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Documents path:** \`${{ inputs.data_path }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Remove all first:** ${{ inputs.remove_all }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Query the system at the application URL once the **Deploy Application** workflow has run." >> "$GITHUB_STEP_SUMMARY"

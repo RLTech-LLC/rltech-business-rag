@@ -60,7 +60,7 @@ jobs:
 
           RESOURCE_GROUP=$(echo "$DEPLOY_OUTPUTS" | jq -r '.AZURE_RESOURCE_GROUP.value // empty')
           if [ -z "$RESOURCE_GROUP" ]; then
-            RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME }}"
+            RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME || 'rltech-prod' }}"
           fi
 
           REGISTRY=$(echo "$DEPLOY_OUTPUTS" | jq -r '.AZURE_CONTAINER_REGISTRY_ENDPOINT.value // empty')

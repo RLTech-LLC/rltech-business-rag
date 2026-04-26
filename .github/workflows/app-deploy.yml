@@ -85,7 +85,7 @@ jobs:
           echo "resource_group=$RESOURCE_GROUP"    >> "$GITHUB_OUTPUT"
           echo "registry=$REGISTRY"                >> "$GITHUB_OUTPUT"
           echo "registry_name=$REGISTRY_NAME"      >> "$GITHUB_OUTPUT"
-          echo "container_app=$CONTAINER_APP"       >> "$GITHUB_OUTPUT"
+          echo "container_app_name=$CONTAINER_APP"       >> "$GITHUB_OUTPUT"
           echo "image_tag=$IMAGE_TAG"              >> "$GITHUB_OUTPUT"
 
           echo "Deploying image: $REGISTRY/backend:$IMAGE_TAG to $CONTAINER_APP"
@@ -107,14 +107,14 @@ jobs:
       - name: Deploy to Azure Container Apps
         run: |
           az containerapp update \
-            --name "${{ steps.resources.outputs.container_app }}" \
+            --name "${{ steps.resources.outputs.container_app_name }}" \
             --resource-group "${{ steps.resources.outputs.resource_group }}" \
             --image "${{ steps.resources.outputs.registry }}/backend:${{ steps.resources.outputs.image_tag }}"
 
       - name: Output deployment URL
         run: |
           FQDN=$(az containerapp show \
-            --name "${{ steps.resources.outputs.container_app }}" \
+            --name "${{ steps.resources.outputs.container_app_name }}" \
             --resource-group "${{ steps.resources.outputs.resource_group }}" \
             --query "properties.configuration.ingress.fqdn" \
             --output tsv)

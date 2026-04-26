@@ -85,7 +85,7 @@ jobs:
           STORAGE_ACCOUNT=$(extract AZURE_STORAGE_ACCOUNT)
           STORAGE_CONTAINER=$(extract AZURE_STORAGE_CONTAINER)
           STORAGE_RESOURCE_GROUP=$(extract AZURE_STORAGE_RESOURCE_GROUP)
-          DOC_INTEL_SERVICE=$(extract AZURE_DOCUMENTINTELLIGENCE_SERVICE)
+          DOC_INTELLIGENCE_SERVICE=$(extract AZURE_DOCUMENTINTELLIGENCE_SERVICE)
           EMB_MODEL=$(extract AZURE_OPENAI_EMB_MODEL_NAME)
           EMB_DEPLOYMENT=$(extract AZURE_OPENAI_EMB_DEPLOYMENT)
           EMB_DIMENSIONS=$(extract AZURE_OPENAI_EMB_DIMENSIONS)
@@ -99,7 +99,7 @@ jobs:
           echo "storage_account=$STORAGE_ACCOUNT"             >> "$GITHUB_OUTPUT"
           echo "storage_container=$STORAGE_CONTAINER"         >> "$GITHUB_OUTPUT"
           echo "storage_resource_group=$STORAGE_RESOURCE_GROUP" >> "$GITHUB_OUTPUT"
-          echo "doc_intel_service=$DOC_INTEL_SERVICE"         >> "$GITHUB_OUTPUT"
+          echo "doc_intelligence_service=$DOC_INTELLIGENCE_SERVICE"         >> "$GITHUB_OUTPUT"
           echo "emb_model=$EMB_MODEL"                         >> "$GITHUB_OUTPUT"
           echo "emb_deployment=$EMB_DEPLOYMENT"               >> "$GITHUB_OUTPUT"
           echo "emb_dimensions=$EMB_DIMENSIONS"               >> "$GITHUB_OUTPUT"
@@ -109,7 +109,7 @@ jobs:
           echo "- OpenAI: \`$OPENAI_SERVICE\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- AI Search: \`$SEARCH_SERVICE/$SEARCH_INDEX\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Storage: \`$STORAGE_ACCOUNT/$STORAGE_CONTAINER\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Document Intelligence: \`$DOC_INTEL_SERVICE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Document Intelligence: \`$DOC_INTELLIGENCE_SERVICE\`" >> "$GITHUB_STEP_SUMMARY"
 
       # Run prepdocs.py with the az CLI credential (azure/login@v2 already authenticated az).
       # AZURE_USE_CLI_CREDENTIAL=true instructs prepdocs.py to use AzureCliCredential
@@ -133,7 +133,7 @@ jobs:
           AZURE_STORAGE_ACCOUNT: ${{ steps.resources.outputs.storage_account }}
           AZURE_STORAGE_CONTAINER: ${{ steps.resources.outputs.storage_container }}
           AZURE_STORAGE_RESOURCE_GROUP: ${{ steps.resources.outputs.storage_resource_group }}
-          AZURE_DOCUMENTINTELLIGENCE_SERVICE: ${{ steps.resources.outputs.doc_intel_service }}
+          AZURE_DOCUMENTINTELLIGENCE_SERVICE: ${{ steps.resources.outputs.doc_intelligence_service }}
           USE_VECTORS: "true"
           USE_MULTIMODAL: "false"
           USE_MEDIA_DESCRIBER_AZURE_CU: "false"

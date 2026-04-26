@@ -43,6 +43,22 @@ on:
           - westus2
           - westeurope
           - australiaeast
+      search_location:
+        description: "Azure AI Search region (separate from primary region when eastus2 capacity is limited)"
+        required: true
+        default: "eastus"
+        type: choice
+        options:
+          - eastus
+          - eastus2
+          - westus2
+          - northcentralus
+          - swedencentral
+          - westeurope
+          - northeurope
+          - uksouth
+          - australiaeast
+          - canadacentral
       restore_cognitive_services:
         description: "Restore soft-deleted Cognitive Services accounts (use after teardown)"
         required: false
@@ -100,6 +116,7 @@ jobs:
               principalId="${{ vars.AZURE_PRINCIPAL_ID }}" \
               openAiHost="azure" \
               azureOpenAiDisableKeys=true \
+              searchServiceLocation="${{ inputs.search_location }}" \
               searchServiceSkuName="basic" \
               searchIndexName="gptkbindex" \
               searchQueryLanguage="en-us" \

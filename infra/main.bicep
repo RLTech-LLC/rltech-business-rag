@@ -889,6 +889,7 @@ module searchService 'core/search/search-services.bicep' = {
   params: {
     name: !empty(searchServiceName) ? searchServiceName : 'gptkb-${resourceToken}'
     location: !empty(searchServiceLocation) ? searchServiceLocation : location
+    identityLocation: location
     tags: tags
     disableLocalAuth: true
     sku: {

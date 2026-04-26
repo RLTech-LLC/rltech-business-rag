@@ -1,0 +1,124 @@
+name: Deploy Application
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+
+# GitHub Actions OIDC — no long-lived secrets needed.
+# Reference: https://learn.microsoft.com/azure/developer/github/connect-from-azure
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to Container Apps
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Build the React frontend. Vite outputs directly into app/backend/static/
+      # so the backend Dockerfile includes the compiled assets automatically.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd app/frontend
+          npm ci
+          npm run build
+
+      # Authenticate using OIDC federated identity — no client secret stored.
+      # Reference: https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Discover the resource names deployed by the Bicep template.
+      # We prefer deployment outputs; fall back to az resource queries.
+      - name: Resolve Azure resource names
+        id: resources
+        run: |
+          DEPLOY_OUTPUTS=$(az deployment sub show \
+            --name "rltech-rag-infra" \
+            --query "properties.outputs" \
+            --output json 2>/dev/null || echo "{}")
+
+          RESOURCE_GROUP=$(echo "$DEPLOY_OUTPUTS" | jq -r '.AZURE_RESOURCE_GROUP.value // empty')
+          if [ -z "$RESOURCE_GROUP" ]; then
+            RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME }}"
+          fi
+
+          REGISTRY=$(echo "$DEPLOY_OUTPUTS" | jq -r '.AZURE_CONTAINER_REGISTRY_ENDPOINT.value // empty')
+          if [ -z "$REGISTRY" ]; then
+            REGISTRY=$(az acr list \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[0].loginServer" \
+              --output tsv)
+          fi
+
+          # Strip the .azurecr.io suffix — az acr build requires the registry name only.
+          REGISTRY_NAME="${REGISTRY%.azurecr.io}"
+
+          # The Container App is tagged with azd-service-name=backend by the Bicep template.
+          CONTAINER_APP=$(az containerapp list \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "[?tags.\"azd-service-name\"=='backend'].name | [0]" \
+            --output tsv)
+
+          IMAGE_TAG="${{ github.sha }}"
+
+          echo "resource_group=$RESOURCE_GROUP"    >> "$GITHUB_OUTPUT"
+          echo "registry=$REGISTRY"                >> "$GITHUB_OUTPUT"
+          echo "registry_name=$REGISTRY_NAME"      >> "$GITHUB_OUTPUT"
+          echo "container_app_name=$CONTAINER_APP"       >> "$GITHUB_OUTPUT"
+          echo "image_tag=$IMAGE_TAG"              >> "$GITHUB_OUTPUT"
+
+          echo "Deploying image: $REGISTRY/backend:$IMAGE_TAG to $CONTAINER_APP"
+
+      # Build the Docker image in ACR Build (cloud-side build — no local Docker daemon required).
+      # The deploying identity needs AcrImageSigner or Contributor on the registry.
+      # Reference: https://learn.microsoft.com/azure/container-registry/container-registry-quickstart-task-cli
+      - name: Build and push container image (ACR Build)
+        run: |
+          az acr build \
+            --registry "${{ steps.resources.outputs.registry_name }}" \
+            --image "backend:${{ steps.resources.outputs.image_tag }}" \
+            --file app/backend/Dockerfile \
+            app/backend/
+
+      # Update the Container App to use the new image.
+      # The user-assigned managed identity already has AcrPull on the registry (assigned by Bicep).
+      # Reference: https://learn.microsoft.com/azure/container-apps/managed-identity-image-pull
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name "${{ steps.resources.outputs.container_app_name }}" \
+            --resource-group "${{ steps.resources.outputs.resource_group }}" \
+            --image "${{ steps.resources.outputs.registry }}/backend:${{ steps.resources.outputs.image_tag }}"
+
+      - name: Output deployment URL
+        run: |
+          FQDN=$(az containerapp show \
+            --name "${{ steps.resources.outputs.container_app_name }}" \
+            --resource-group "${{ steps.resources.outputs.resource_group }}" \
+            --query "properties.configuration.ingress.fqdn" \
+            --output tsv)
+
+          echo "### Application Deployed :white_check_mark:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **URL:** https://$FQDN" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Image:** \`${{ steps.resources.outputs.registry }}/backend:${{ steps.resources.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"

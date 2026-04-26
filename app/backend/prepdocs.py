@@ -6,7 +6,7 @@ from typing import Optional
 
 import aiohttp
 from azure.core.credentials_async import AsyncTokenCredential
-from azure.identity.aio import AzureDeveloperCliCredential
+from azure.identity.aio import AzureCliCredential, AzureDeveloperCliCredential
 from openai import AsyncOpenAI
 from rich.logging import RichHandler
 
@@ -181,8 +181,16 @@ if __name__ == "__main__":  # pragma: no cover
     use_web_source = os.getenv("USE_WEB_SOURCE", "").lower() == "true"
     use_sharepoint_source = os.getenv("USE_SHAREPOINT_SOURCE", "").lower() == "true"
 
-    # Use the current user identity to connect to Azure services. See infra/main.bicep for role assignments.
-    if tenant_id := os.getenv("AZURE_TENANT_ID"):
+    # Choose credential based on the runtime environment:
+    #   AZURE_USE_CLI_CREDENTIAL=true  → AzureCliCredential (az login / azure/login@v2 in CI)
+    #   default                        → AzureDeveloperCliCredential (azd auth login for local dev)
+    tenant_id = os.getenv("AZURE_TENANT_ID")
+    if os.getenv("AZURE_USE_CLI_CREDENTIAL", "").lower() == "true":
+        logger.info("Using Azure CLI credential (az login) for authentication")
+        azd_credential: AsyncTokenCredential = (
+            AzureCliCredential(tenant_id=tenant_id) if tenant_id else AzureCliCredential()
+        )
+    elif tenant_id:
         logger.info("Connecting to Azure services using the azd credential for tenant %s", tenant_id)
         azd_credential = AzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
     else:

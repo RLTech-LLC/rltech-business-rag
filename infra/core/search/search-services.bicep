@@ -33,9 +33,12 @@ param semanticSearch string = 'disabled'
 
 param sharedPrivateLinkStorageAccounts array = []
 
+@description('Location for the managed identity resource. Defaults to the same location as the search service. Override to pin the identity to a fixed region (e.g. the primary environment location) so that redeployments to a different search region do not attempt to move an existing identity.')
+param identityLocation string = location
+
 resource searchIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = if (sku.name != 'free') {
   name: '${name}-identity'
-  location: location
+  location: identityLocation
   tags: tags
 }
 

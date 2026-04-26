@@ -1,8 +1,6 @@
 import subprocess
 from unittest.mock import MagicMock
 
-import pytest
-
 from load_azd_env import load_azd_env
 
 

@@ -50,7 +50,7 @@ Then add a **federated credential** in the Azure portal (or via CLI) scoped to:
 - Subject: `repo:RLTech-LLC/rltech-business-rag:environment:prod`
 - Audience: `api://AzureADTokenExchange`
 
-Microsoft reference: [Connect GitHub Actions to Azure with OIDC](https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc)
+Microsoft reference: [Connect GitHub Actions to Azure with OIDC](https://learn.microsoft.com/azure/developer/github/connect-from-azure)
 
 ### 3 — GitHub repository configuration
 
@@ -210,10 +210,10 @@ If you want to re-provision after teardown, set **Restore soft-deleted Cognitive
 
 ## Key Microsoft Documentation
 
-- [Azure OpenAI RAG reference architecture](https://learn.microsoft.com/azure/architecture/ai-ml/openai/rag-openai-search)
+- [Azure OpenAI RAG reference architecture](https://learn.microsoft.com/azure/search/retrieval-augmented-generation-overview)
 - [Azure AI Search hybrid retrieval](https://learn.microsoft.com/azure/search/hybrid-search-overview)
 - [Azure Container Apps Consumption profile](https://learn.microsoft.com/azure/container-apps/workload-profiles-overview)
 - [Azure Document Intelligence layout model](https://learn.microsoft.com/azure/ai-services/document-intelligence/concept-layout)
-- [GitHub Actions OIDC authentication to Azure](https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc)
+- [GitHub Actions OIDC authentication to Azure](https://learn.microsoft.com/azure/developer/github/connect-from-azure)
 - [Bicep subscription-scope deployment](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-to-subscription)
 - [ACR Build Tasks](https://learn.microsoft.com/azure/container-registry/container-registry-tutorial-quick-task)

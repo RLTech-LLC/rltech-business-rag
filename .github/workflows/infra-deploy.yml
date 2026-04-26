@@ -6,7 +6,7 @@ on:
       location:
         description: "Primary Azure region for all resources"
         required: true
-        default: "eastus2"
+        default: "eastus"
         type: choice
         options:
           - eastus
@@ -19,6 +19,7 @@ on:
           - uksouth
           - australiaeast
           - canadacentral
+
       openai_location:
         description: "Azure OpenAI region (must support gpt-4.1-mini & text-embedding-3-large)"
         required: true
@@ -33,6 +34,7 @@ on:
           - uksouth
           - australiaeast
           - canadaeast
+
       doc_intel_location:
         description: "Document Intelligence region (limited availability)"
         required: true
@@ -43,6 +45,7 @@ on:
           - westus2
           - westeurope
           - australiaeast
+
       restore_cognitive_services:
         description: "Restore soft-deleted Cognitive Services accounts (use after teardown)"
         required: false
@@ -52,8 +55,6 @@ on:
           - "false"
           - "true"
 
-# GitHub Actions OIDC — no long-lived secrets needed.
-# Reference: https://learn.microsoft.com/azure/developer/github/connect-from-azure
 permissions:
   id-token: write
   contents: read
@@ -73,8 +74,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Authenticate using OIDC federated identity — no client secret stored.
-      # Reference: https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -82,14 +81,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Deploy the subscription-scoped Bicep template.
-      # This creates all Azure resources: OpenAI, AI Search, Blob Storage,
-      # Document Intelligence, Container Apps, Container Registry, and monitoring.
-      # Reference: https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-cli
       - name: Provision infrastructure with Bicep
         run: |
           az deployment sub create \
-            --name "rltech-rag-infra" \
+            --name "rltech-rag-infra-2" \
             --location "${{ inputs.location }}" \
             --template-file infra/main.bicep \
             --parameters \
@@ -97,7 +92,7 @@ jobs:
               location="${{ inputs.location }}" \
               openAiLocation="${{ inputs.openai_location }}" \
               documentIntelligenceResourceGroupLocation="${{ inputs.doc_intel_location }}" \
-              principalId="${{ vars.AZURE_PRINCIPAL_ID }}" \
+              principalId="${{ vars.AZURE_USER_OBJECT_ID }}" \
               openAiHost="azure" \
               azureOpenAiDisableKeys=true \
               searchServiceSkuName="basic" \
@@ -111,7 +106,6 @@ jobs:
               deploymentTarget="containerapps" \
               azureContainerAppsWorkloadProfile="Consumption" \
               webAppExists=false \
-              appServiceSkuName="B1" \
               documentIntelligenceSkuName="S0" \
               speechServiceSkuName="S0" \
               cosmosDbSkuName="serverless" \
@@ -159,7 +153,7 @@ jobs:
         id: read-outputs
         run: |
           OUTPUTS=$(az deployment sub show \
-            --name "rltech-rag-infra" \
+            --name "rltech-rag-infra-2" \
             --query "properties.outputs" \
             --output json)
 
@@ -171,11 +165,11 @@ jobs:
           echo "registry_endpoint=$REGISTRY_ENDPOINT" >> "$GITHUB_OUTPUT"
           echo "backend_uri=$BACKEND_URI" >> "$GITHUB_OUTPUT"
 
-          echo "### Infrastructure Deployment Complete :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Infrastructure Deployment Complete" >> "$GITHUB_STEP_SUMMARY"
           echo "| Resource | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Resource Group | \`$RESOURCE_GROUP\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Container Registry | \`$REGISTRY_ENDPOINT\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Application URL | $BACKEND_URI |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "> **Next steps:** Run the **Deploy Application** workflow, then **Ingest Business Documents**." >> "$GITHUB_STEP_SUMMARY"
+          echo "> **Next:** Run **Deploy Application**, then **Ingest Business Documents**." >> "$GITHUB_STEP_SUMMARY"

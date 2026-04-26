@@ -53,8 +53,9 @@ jobs:
       - name: Resolve Azure resource names
         id: resources
         run: |
+          INFRA_DEPLOYMENT_NAME="rltech-rag-infra"
           DEPLOY_OUTPUTS=$(az deployment sub show \
-            --name "rltech-rag-infra" \
+            --name "$INFRA_DEPLOYMENT_NAME" \
             --query "properties.outputs" \
             --output json 2>/dev/null || echo "{}")
 
@@ -62,7 +63,7 @@ jobs:
           # this workflow with a clear message rather than failing with a cryptic error.
           INFRA_EXISTS=$(echo "$DEPLOY_OUTPUTS" | jq -r 'if . == {} then "false" else "true" end')
           if [ "$INFRA_EXISTS" = "false" ]; then
-            echo "::warning::Infrastructure deployment 'rltech-rag-infra' not found. Run the 'Provision Infrastructure' workflow first."
+            echo "::warning::Infrastructure deployment '$INFRA_DEPLOYMENT_NAME' not found. Run the 'Provision Infrastructure' workflow first."
             echo "infra_ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi

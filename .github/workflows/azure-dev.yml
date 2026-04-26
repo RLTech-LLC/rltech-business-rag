@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # azd required
+      # AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID must be configured as
+      # repository secrets (Settings → Secrets and variables → Actions → Secrets).
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

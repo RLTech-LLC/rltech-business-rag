@@ -45,11 +45,12 @@ az role assignment create \
 ```
 
 Then add a **federated credential** in the Azure portal (or via CLI) scoped to:
+
 - Issuer: `https://token.actions.githubusercontent.com`
 - Subject: `repo:RLTech-LLC/rltech-business-rag:environment:prod`
 - Audience: `api://AzureADTokenExchange`
 
-Microsoft reference: [Connect GitHub Actions to Azure with OIDC](https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc)
+Microsoft reference: [Connect GitHub Actions to Azure with OIDC](https://learn.microsoft.com/azure/active-directory/workload-identities/workload-identity-federation-create-trust)
 
 ### 3 — GitHub repository configuration
 
@@ -87,6 +88,7 @@ Run the **Provision Infrastructure** workflow manually from the Actions tab:
 5. Click **Run workflow**.
 
 The workflow runs `az deployment sub create` against `infra/main.bicep`. It creates:
+
 - A resource group `rg-<AZURE_ENV_NAME>`
 - All Azure services listed in the architecture table above
 - RBAC role assignments for the application's managed identity and the deploying principal
@@ -103,6 +105,7 @@ Run the **Deploy Application** workflow manually, or it triggers automatically o
 2. Click **Run workflow**.
 
 The workflow:
+
 1. Builds the React frontend (`npm ci && npm run build`) — output goes to `app/backend/static/`.
 2. Builds the Docker image in ACR Build (`az acr build`) — no local Docker daemon needed.
 3. Updates the Container App to use the new image (`az containerapp update`).
@@ -113,7 +116,7 @@ The workflow:
 
 Place your documents in the `data/` directory (or a subdirectory), commit and push them, then run the **Ingest Business Documents** workflow:
 
-```
+```text
 data/
 ├── contracts/
 │   ├── vendor-agreement-2024.pdf
@@ -134,6 +137,7 @@ Supported formats: `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.html`, `.md`, `.txt`, `.
 3. Click **Run workflow**.
 
 The workflow runs `prepdocs.py`, which:
+
 - Uploads raw documents to Azure Blob Storage.
 - Extracts text and structure using Azure Document Intelligence.
 - Splits content into overlapping chunks.
@@ -159,6 +163,7 @@ az containerapp show \
 ```
 
 The web interface provides:
+
 - **Chat** — ask natural-language questions over your business documents.
 - **Citations** — every answer cites the source document and page.
 - **Developer settings** — tune retrieval parameters (top-K, semantic ranking, vector weights).
@@ -205,10 +210,10 @@ If you want to re-provision after teardown, set **Restore soft-deleted Cognitive
 
 ## Key Microsoft Documentation
 
-- [Azure OpenAI RAG reference architecture](https://learn.microsoft.com/azure/architecture/ai-ml/openai/rag-openai-search)
+- [Azure OpenAI RAG reference architecture](https://learn.microsoft.com/azure/search/retrieval-augmented-generation-overview)
 - [Azure AI Search hybrid retrieval](https://learn.microsoft.com/azure/search/hybrid-search-overview)
 - [Azure Container Apps Consumption profile](https://learn.microsoft.com/azure/container-apps/workload-profiles-overview)
 - [Azure Document Intelligence layout model](https://learn.microsoft.com/azure/ai-services/document-intelligence/concept-layout)
-- [GitHub Actions OIDC authentication to Azure](https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc)
+- [GitHub Actions OIDC authentication to Azure](https://learn.microsoft.com/azure/active-directory/workload-identities/workload-identity-federation-create-trust)
 - [Bicep subscription-scope deployment](https://learn.microsoft.com/azure/azure-resource-manager/bicep/deploy-to-subscription)
 - [ACR Build Tasks](https://learn.microsoft.com/azure/container-registry/container-registry-tutorial-quick-task)

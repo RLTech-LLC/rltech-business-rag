@@ -58,6 +58,16 @@ jobs:
             --query "properties.outputs" \
             --output json 2>/dev/null || echo "{}")
 
+          # If the infrastructure deployment does not exist yet, skip the rest of
+          # this workflow with a clear message rather than failing with a cryptic error.
+          INFRA_EXISTS=$(echo "$DEPLOY_OUTPUTS" | jq -r 'if . == {} then "false" else "true" end')
+          if [ "$INFRA_EXISTS" = "false" ]; then
+            echo "::warning::Infrastructure deployment 'rltech-rag-infra' not found. Run the 'Provision Infrastructure' workflow first."
+            echo "infra_ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "infra_ready=true" >> "$GITHUB_OUTPUT"
+
           RESOURCE_GROUP=$(echo "$DEPLOY_OUTPUTS" | jq -r '.AZURE_RESOURCE_GROUP.value // empty')
           if [ -z "$RESOURCE_GROUP" ]; then
             RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME || 'rltech-prod' }}"
@@ -94,6 +104,7 @@ jobs:
       # The deploying identity needs AcrImageSigner or Contributor on the registry.
       # Reference: https://learn.microsoft.com/azure/container-registry/container-registry-quickstart-task-cli
       - name: Build and push container image (ACR Build)
+        if: steps.resources.outputs.infra_ready == 'true'
         run: |
           az acr build \
             --registry "${{ steps.resources.outputs.registry_name }}" \
@@ -105,6 +116,7 @@ jobs:
       # The user-assigned managed identity already has AcrPull on the registry (assigned by Bicep).
       # Reference: https://learn.microsoft.com/azure/container-apps/managed-identity-image-pull
       - name: Deploy to Azure Container Apps
+        if: steps.resources.outputs.infra_ready == 'true'
         run: |
           az containerapp update \
             --name "${{ steps.resources.outputs.container_app_name }}" \
@@ -112,6 +124,7 @@ jobs:
             --image "${{ steps.resources.outputs.registry }}/backend:${{ steps.resources.outputs.image_tag }}"
 
       - name: Output deployment URL
+        if: steps.resources.outputs.infra_ready == 'true'
         run: |
           FQDN=$(az containerapp show \
             --name "${{ steps.resources.outputs.container_app_name }}" \

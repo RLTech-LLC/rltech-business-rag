@@ -353,6 +353,9 @@ param runningOnGh string = ''
 @description('Whether the deployment is running on Azure DevOps Pipeline')
 param runningOnAdo string = ''
 
+@description('Skip all Microsoft.Authorization/roleAssignments. Set to true when the deploying identity lacks roleAssignments/write (e.g. CI service principals with Contributor only). Role assignments must then be created separately by an Owner or User Access Administrator.')
+param skipRoleAssignments bool = false
+
 @description('Used by azd for containerapps deployment')
 param webAppExists bool
 
@@ -1097,7 +1100,7 @@ module ai 'core/ai/ai-environment.bicep' = if (useAiProject) {
 // USER ROLES
 var principalType = empty(runningOnGh) && empty(runningOnAdo) ? 'User' : 'ServicePrincipal'
 
-module openAiRoleUser 'core/security/role.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi) {
+module openAiRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments && isAzureOpenAiHost && deployAzureOpenAi) {
   scope: openAiResourceGroup
   name: 'openai-role-user'
   params: {
@@ -1108,7 +1111,7 @@ module openAiRoleUser 'core/security/role.bicep' = if (isAzureOpenAiHost && depl
 }
 
 // For both Document Intelligence and AI vision
-module cognitiveServicesRoleUser 'core/security/role.bicep' = {
+module cognitiveServicesRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: resourceGroup
   name: 'cognitiveservices-role-user'
   params: {
@@ -1118,7 +1121,7 @@ module cognitiveServicesRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module speechRoleUser 'core/security/role.bicep' = {
+module speechRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: speechResourceGroup
   name: 'speech-role-user'
   params: {
@@ -1128,7 +1131,7 @@ module speechRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageRoleUser 'core/security/role.bicep' = {
+module storageRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: storageResourceGroup
   name: 'storage-role-user'
   params: {
@@ -1138,7 +1141,7 @@ module storageRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageContribRoleUser 'core/security/role.bicep' = {
+module storageContribRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: storageResourceGroup
   name: 'storage-contrib-role-user'
   params: {
@@ -1148,7 +1151,7 @@ module storageContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module storageOwnerRoleUser 'core/security/role.bicep' = if (useUserUpload) {
+module storageOwnerRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments && useUserUpload) {
   scope: storageResourceGroup
   name: 'storage-owner-role-user'
   params: {
@@ -1158,7 +1161,7 @@ module storageOwnerRoleUser 'core/security/role.bicep' = if (useUserUpload) {
   }
 }
 
-module searchRoleUser 'core/security/role.bicep' = {
+module searchRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: searchServiceResourceGroup
   name: 'search-role-user'
   params: {
@@ -1168,7 +1171,7 @@ module searchRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchContribRoleUser 'core/security/role.bicep' = {
+module searchContribRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: searchServiceResourceGroup
   name: 'search-contrib-role-user'
   params: {
@@ -1178,7 +1181,7 @@ module searchContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module searchSvcContribRoleUser 'core/security/role.bicep' = {
+module searchSvcContribRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: searchServiceResourceGroup
   name: 'search-svccontrib-role-user'
   params: {
@@ -1188,7 +1191,7 @@ module searchSvcContribRoleUser 'core/security/role.bicep' = {
   }
 }
 
-module cosmosDbAccountContribRoleUser 'core/security/role.bicep' = if (useAuthentication && useChatHistoryCosmos) {
+module cosmosDbAccountContribRoleUser 'core/security/role.bicep' = if (!skipRoleAssignments && useAuthentication && useChatHistoryCosmos) {
   scope: cosmosDbResourceGroup
   name: 'cosmosdb-account-contrib-role-user'
   params: {
@@ -1200,7 +1203,7 @@ module cosmosDbAccountContribRoleUser 'core/security/role.bicep' = if (useAuthen
 
 // RBAC for Cosmos DB
 // https://learn.microsoft.com/azure/cosmos-db/nosql/security/how-to-grant-data-plane-role-based-access
-module cosmosDbDataContribRoleUser 'core/security/documentdb-sql-role.bicep' = if (useAuthentication && useChatHistoryCosmos) {
+module cosmosDbDataContribRoleUser 'core/security/documentdb-sql-role.bicep' = if (!skipRoleAssignments && useAuthentication && useChatHistoryCosmos) {
   scope: cosmosDbResourceGroup
   name: 'cosmosdb-data-contrib-role-user'
   params: {
@@ -1214,7 +1217,7 @@ module cosmosDbDataContribRoleUser 'core/security/documentdb-sql-role.bicep' = i
 }
 
 // SYSTEM IDENTITIES
-module openAiRoleBackend 'core/security/role.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi) {
+module openAiRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments && isAzureOpenAiHost && deployAzureOpenAi) {
   scope: openAiResourceGroup
   name: 'openai-role-backend'
   params: {
@@ -1226,7 +1229,7 @@ module openAiRoleBackend 'core/security/role.bicep' = if (isAzureOpenAiHost && d
   }
 }
 
-module openAiRoleSearchService 'core/security/role.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi && searchServiceSkuName != 'free') {
+module openAiRoleSearchService 'core/security/role.bicep' = if (!skipRoleAssignments && isAzureOpenAiHost && deployAzureOpenAi && searchServiceSkuName != 'free') {
   scope: openAiResourceGroup
   name: 'openai-role-searchservice'
   params: {
@@ -1236,7 +1239,7 @@ module openAiRoleSearchService 'core/security/role.bicep' = if (isAzureOpenAiHos
   }
 }
 
-module visionRoleSearchService 'core/security/role.bicep' = if (useMultimodal && searchServiceSkuName != 'free') {
+module visionRoleSearchService 'core/security/role.bicep' = if (!skipRoleAssignments && useMultimodal && searchServiceSkuName != 'free') {
   scope: visionResourceGroup
   name: 'vision-role-searchservice'
   params: {
@@ -1246,7 +1249,7 @@ module visionRoleSearchService 'core/security/role.bicep' = if (useMultimodal &&
   }
 }
 
-module storageRoleBackend 'core/security/role.bicep' = {
+module storageRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: storageResourceGroup
   name: 'storage-role-backend'
   params: {
@@ -1258,7 +1261,7 @@ module storageRoleBackend 'core/security/role.bicep' = {
   }
 }
 
-module storageOwnerRoleBackend 'core/security/role.bicep' = if (useUserUpload) {
+module storageOwnerRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments && useUserUpload) {
   scope: storageResourceGroup
   name: 'storage-owner-role-backend'
   params: {
@@ -1271,7 +1274,7 @@ module storageOwnerRoleBackend 'core/security/role.bicep' = if (useUserUpload) {
 }
 
 // Search service needs blob read access for both integrated vectorization and cloud ingestion indexer data source
-module storageRoleSearchService 'core/security/role.bicep' = if ((useIntegratedVectorization || useCloudIngestion) && searchServiceSkuName != 'free') {
+module storageRoleSearchService 'core/security/role.bicep' = if (!skipRoleAssignments && (useIntegratedVectorization || useCloudIngestion) && searchServiceSkuName != 'free') {
   scope: storageResourceGroup
   name: 'storage-role-searchservice'
   params: {
@@ -1281,7 +1284,7 @@ module storageRoleSearchService 'core/security/role.bicep' = if ((useIntegratedV
   }
 }
 
-module storageRoleContributorSearchService 'core/security/role.bicep' = if ((useIntegratedVectorization && useMultimodal) && searchServiceSkuName != 'free') {
+module storageRoleContributorSearchService 'core/security/role.bicep' = if (!skipRoleAssignments && (useIntegratedVectorization && useMultimodal) && searchServiceSkuName != 'free') {
   scope: storageResourceGroup
   name: 'storage-role-contributor-searchservice'
   params: {
@@ -1294,7 +1297,7 @@ module storageRoleContributorSearchService 'core/security/role.bicep' = if ((use
 // ADLS Gen2 storage role assignments for cloud ingestion with ACLs
 // These are scoped to the ADLS storage account itself, so they work for both
 // provisioned and bring-your-own (BYO) ADLS storage accounts
-module adlsStorageRoleSearchService 'core/security/storage-role.bicep' = if (useCloudIngestionAcls && searchServiceSkuName != 'free') {
+module adlsStorageRoleSearchService 'core/security/storage-role.bicep' = if (!skipRoleAssignments && useCloudIngestionAcls && searchServiceSkuName != 'free') {
   scope: adlsStorageResourceGroup
   name: 'adls-storage-role-searchservice'
   params: {
@@ -1306,7 +1309,7 @@ module adlsStorageRoleSearchService 'core/security/storage-role.bicep' = if (use
 }
 
 // Storage Blob Data Owner on ADLS storage for user to manage ACLs
-module adlsStorageOwnerRoleUser 'core/security/storage-role.bicep' = if (useCloudIngestionAcls) {
+module adlsStorageOwnerRoleUser 'core/security/storage-role.bicep' = if (!skipRoleAssignments && useCloudIngestionAcls) {
   scope: adlsStorageResourceGroup
   name: 'adls-storage-owner-role-user'
   params: {
@@ -1321,7 +1324,7 @@ module adlsStorageOwnerRoleUser 'core/security/storage-role.bicep' = if (useClou
 // Note: This module requires useCloudIngestion=true because it references functions!.outputs.principalId.
 // If useCloudIngestionAcls=true but useCloudIngestion=false, deployment will fail.
 // Documentation states USE_CLOUD_INGESTION_ACLS requires USE_CLOUD_INGESTION to be true.
-module adlsStorageRoleFunctions 'core/security/storage-role.bicep' = if (useCloudIngestionAcls && useCloudIngestion) {
+module adlsStorageRoleFunctions 'core/security/storage-role.bicep' = if (!skipRoleAssignments && useCloudIngestionAcls && useCloudIngestion) {
   scope: adlsStorageResourceGroup
   name: 'adls-storage-role-functions'
   params: {
@@ -1333,7 +1336,7 @@ module adlsStorageRoleFunctions 'core/security/storage-role.bicep' = if (useClou
 }
 
 // Necessary for the Container Apps backend to store authentication tokens in the blob storage container
-module storageRoleContributorBackend 'core/security/role.bicep' = if (deploymentTarget == 'containerapps' && !empty(clientAppId)) {
+module storageRoleContributorBackend 'core/security/role.bicep' = if (!skipRoleAssignments && deploymentTarget == 'containerapps' && !empty(clientAppId)) {
   scope: storageResourceGroup
   name: 'storage-role-contributor-aca-backend'
   params: {
@@ -1345,7 +1348,7 @@ module storageRoleContributorBackend 'core/security/role.bicep' = if (deployment
 
 // Used to issue search queries
 // https://learn.microsoft.com/azure/search/search-security-rbac
-module searchRoleBackend 'core/security/role.bicep' = {
+module searchRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: searchServiceResourceGroup
   name: 'search-role-backend'
   params: {
@@ -1357,7 +1360,7 @@ module searchRoleBackend 'core/security/role.bicep' = {
   }
 }
 
-module speechRoleBackend 'core/security/role.bicep' = {
+module speechRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments) {
   scope: speechResourceGroup
   name: 'speech-role-backend'
   params: {
@@ -1371,7 +1374,7 @@ module speechRoleBackend 'core/security/role.bicep' = {
 
 // RBAC for Cosmos DB
 // https://learn.microsoft.com/azure/cosmos-db/nosql/security/how-to-grant-data-plane-role-based-access
-module cosmosDbRoleBackend 'core/security/documentdb-sql-role.bicep' = if (useAuthentication && useChatHistoryCosmos) {
+module cosmosDbRoleBackend 'core/security/documentdb-sql-role.bicep' = if (!skipRoleAssignments && useAuthentication && useChatHistoryCosmos) {
   scope: cosmosDbResourceGroup
   name: 'cosmosdb-role-backend'
   params: {
@@ -1486,7 +1489,7 @@ module privateEndpoints 'private-endpoints.bicep' = if (usePrivateEndpoint) {
 
 // Used to read index definitions (required when using authentication)
 // https://learn.microsoft.com/azure/search/search-security-rbac
-module searchReaderRoleBackend 'core/security/role.bicep' = if (useAuthentication) {
+module searchReaderRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments && useAuthentication) {
   scope: searchServiceResourceGroup
   name: 'search-reader-role-backend'
   params: {
@@ -1499,7 +1502,7 @@ module searchReaderRoleBackend 'core/security/role.bicep' = if (useAuthenticatio
 }
 
 // Used to add/remove documents from index (required for user upload feature)
-module searchContribRoleBackend 'core/security/role.bicep' = if (useUserUpload) {
+module searchContribRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments && useUserUpload) {
   scope: searchServiceResourceGroup
   name: 'search-contrib-role-backend'
   params: {
@@ -1512,7 +1515,7 @@ module searchContribRoleBackend 'core/security/role.bicep' = if (useUserUpload) 
 }
 
 // For Azure AI Vision access by the backend
-module visionRoleBackend 'core/security/role.bicep' = if (useMultimodal) {
+module visionRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments && useMultimodal) {
   scope: visionResourceGroup
   name: 'vision-role-backend'
   params: {
@@ -1525,7 +1528,7 @@ module visionRoleBackend 'core/security/role.bicep' = if (useMultimodal) {
 }
 
 // For document intelligence access by the backend
-module documentIntelligenceRoleBackend 'core/security/role.bicep' = if (useUserUpload) {
+module documentIntelligenceRoleBackend 'core/security/role.bicep' = if (!skipRoleAssignments && useUserUpload) {
   scope: documentIntelligenceResourceGroup
   name: 'documentintelligence-role-backend'
   params: {

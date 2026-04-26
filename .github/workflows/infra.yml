@@ -82,6 +82,7 @@ jobs:
               --workspace-name "$LOG_ANALYTICS_WORKSPACE" \
               --query "primarySharedKey" \
               --output tsv)
+            echo "::add-mask::$WORKSPACE_KEY"
 
             az containerapp env create \
               --name "$CONTAINER_APP_ENV" \

@@ -75,7 +75,7 @@ jobs:
 
           RESOURCE_GROUP=$(extract AZURE_RESOURCE_GROUP)
           if [ -z "$RESOURCE_GROUP" ]; then
-            RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME }}"
+            RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME || 'rltech-prod' }}"
           fi
 
           OPENAI_SERVICE=$(extract AZURE_OPENAI_SERVICE)

@@ -93,7 +93,7 @@ jobs:
             --location "${{ inputs.location }}" \
             --template-file infra/main.bicep \
             --parameters \
-              environmentName="${{ vars.AZURE_ENV_NAME }}" \
+              environmentName="${{ vars.AZURE_ENV_NAME || 'rltech-prod' }}" \
               location="${{ inputs.location }}" \
               openAiLocation="${{ inputs.openai_location }}" \
               documentIntelligenceResourceGroupLocation="${{ inputs.doc_intel_location }}" \

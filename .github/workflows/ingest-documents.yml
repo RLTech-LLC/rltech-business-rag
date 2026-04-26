@@ -79,19 +79,24 @@ jobs:
 
       # Retrieve all resource names from the Bicep deployment outputs.
       # This avoids hardcoding names and stays in sync with what was actually deployed.
+      # Falls back to direct Azure resource queries if the deployment lookup fails
+      # (e.g. when the service principal lacks subscription-scope deployment read access).
       - name: Resolve Azure resource names from deployment
         id: resources
         run: |
+          RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME || 'rltech-prod' }}"
+
           DEPLOY_OUTPUTS=$(az deployment sub show \
             --name "rltech-rag-infra-${{ inputs.location || 'eastus2' }}" \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
             --query "properties.outputs" \
             --output json 2>/dev/null || echo "{}")
 
           extract() { echo "$DEPLOY_OUTPUTS" | jq -r ".$1.value // empty"; }
 
-          RESOURCE_GROUP=$(extract AZURE_RESOURCE_GROUP)
-          if [ -z "$RESOURCE_GROUP" ]; then
-            RESOURCE_GROUP="rg-${{ vars.AZURE_ENV_NAME || 'rltech-prod' }}"
+          RG_FROM_DEPLOY=$(extract AZURE_RESOURCE_GROUP)
+          if [ -n "$RG_FROM_DEPLOY" ]; then
+            RESOURCE_GROUP="$RG_FROM_DEPLOY"
           fi
 
           OPENAI_SERVICE=$(extract AZURE_OPENAI_SERVICE)
@@ -106,6 +111,66 @@ jobs:
           EMB_DEPLOYMENT=$(extract AZURE_OPENAI_EMB_DEPLOYMENT)
           EMB_DIMENSIONS=$(extract AZURE_OPENAI_EMB_DIMENSIONS)
           TENANT_ID=$(extract AZURE_TENANT_ID)
+
+          # Fallback: if critical values are missing, query Azure resources directly.
+          # This handles cases where the service principal cannot read subscription-level
+          # deployments but does have resource-group-scoped access.
+          if [ -z "$SEARCH_SERVICE" ] || [ -z "$STORAGE_ACCOUNT" ] || [ -z "$OPENAI_SERVICE" ]; then
+            echo "Deployment output lookup returned incomplete data — querying Azure resources in: $RESOURCE_GROUP"
+
+            # Each query selects the first resource of the expected type because the
+            # standard Bicep deployment creates exactly one of each in this resource group.
+            if [ -z "$SEARCH_SERVICE" ]; then
+              SEARCH_SERVICE=$(az resource list \
+                --resource-group "$RESOURCE_GROUP" \
+                --resource-type "Microsoft.Search/searchServices" \
+                --query "[0].name" --output tsv 2>/dev/null || echo "")
+            fi
+
+            if [ -z "$STORAGE_ACCOUNT" ]; then
+              STORAGE_ACCOUNT=$(az storage account list \
+                --resource-group "$RESOURCE_GROUP" \
+                --query "[0].name" --output tsv 2>/dev/null || echo "")
+            fi
+
+            if [ -z "$OPENAI_SERVICE" ]; then
+              OPENAI_SERVICE=$(az cognitiveservices account list \
+                --resource-group "$RESOURCE_GROUP" \
+                --query "[?kind=='OpenAI'].name | [0]" --output tsv 2>/dev/null || echo "")
+              OPENAI_ENDPOINT="https://${OPENAI_SERVICE}.openai.azure.com"
+            fi
+
+            if [ -z "$DOC_INTELLIGENCE_SERVICE" ]; then
+              DOC_INTELLIGENCE_SERVICE=$(az cognitiveservices account list \
+                --resource-group "$RESOURCE_GROUP" \
+                --query "[?kind=='FormRecognizer'].name | [0]" --output tsv 2>/dev/null || echo "")
+            fi
+
+            if [ -z "$TENANT_ID" ]; then
+              # Tenant ID is an account-level property, not a resource in the group
+              TENANT_ID=$(az account show --query "tenantId" --output tsv 2>/dev/null || echo "")
+            fi
+
+            # Apply defaults for values consistent with infra-deploy.yml
+            [ -z "$SEARCH_INDEX" ]           && SEARCH_INDEX="gptkbindex"
+            [ -z "$STORAGE_CONTAINER" ]      && STORAGE_CONTAINER="content"
+            [ -z "$STORAGE_RESOURCE_GROUP" ] && STORAGE_RESOURCE_GROUP="$RESOURCE_GROUP"
+            [ -z "$EMB_MODEL" ]              && EMB_MODEL="text-embedding-3-large"
+            [ -z "$EMB_DEPLOYMENT" ]         && EMB_DEPLOYMENT="text-embedding-3-large"
+            [ -z "$EMB_DIMENSIONS" ]         && EMB_DIMENSIONS="3072"
+          fi
+
+          # Fail fast if critical values are still missing
+          MISSING=""
+          [ -z "$SEARCH_SERVICE" ]  && MISSING="$MISSING SEARCH_SERVICE"
+          [ -z "$STORAGE_ACCOUNT" ] && MISSING="$MISSING STORAGE_ACCOUNT"
+          [ -z "$OPENAI_SERVICE" ]  && MISSING="$MISSING OPENAI_SERVICE"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Failed to resolve required Azure resource names:$MISSING"
+            echo "Ensure the 'Provision Infrastructure' workflow has been run successfully"
+            echo "and that the service principal has at least Reader access to the resource group."
+            exit 1
+          fi
 
           echo "resource_group=$RESOURCE_GROUP"               >> "$GITHUB_OUTPUT"
           echo "openai_service=$OPENAI_SERVICE"               >> "$GITHUB_OUTPUT"

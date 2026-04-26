@@ -66,7 +66,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          uv pip install --system -r app/backend/requirements.txt
+          uv pip install -r app/backend/requirements.txt
 
       # Authenticate using OIDC federated identity — no client secret stored.
       # Reference: https://learn.microsoft.com/azure/developer/github/connect-from-azure-oidc
@@ -165,7 +165,7 @@ jobs:
           fi
 
           cd app/backend
-          python prepdocs.py \
+          uv run python prepdocs.py \
             "../../${{ inputs.data_path }}*" \
             $REMOVE_FLAG \
             $VERBOSE_FLAG

@@ -151,14 +151,16 @@ jobs:
               TENANT_ID=$(az account show --query "tenantId" --output tsv 2>/dev/null || echo "")
             fi
 
-            # Apply defaults for values consistent with infra-deploy.yml
-            [ -z "$SEARCH_INDEX" ]           && SEARCH_INDEX="gptkbindex"
-            [ -z "$STORAGE_CONTAINER" ]      && STORAGE_CONTAINER="content"
-            [ -z "$STORAGE_RESOURCE_GROUP" ] && STORAGE_RESOURCE_GROUP="$RESOURCE_GROUP"
-            [ -z "$EMB_MODEL" ]              && EMB_MODEL="text-embedding-3-large"
-            [ -z "$EMB_DEPLOYMENT" ]         && EMB_DEPLOYMENT="text-embedding-3-large"
-            [ -z "$EMB_DIMENSIONS" ]         && EMB_DIMENSIONS="3072"
           fi
+
+          # Always apply defaults for non-critical values so they are never empty,
+          # even when the deployment lookup succeeded but omitted these fields.
+          [ -z "$SEARCH_INDEX" ]           && SEARCH_INDEX="gptkbindex"
+          [ -z "$STORAGE_CONTAINER" ]      && STORAGE_CONTAINER="content"
+          [ -z "$STORAGE_RESOURCE_GROUP" ] && STORAGE_RESOURCE_GROUP="$RESOURCE_GROUP"
+          [ -z "$EMB_MODEL" ]              && EMB_MODEL="text-embedding-3-large"
+          [ -z "$EMB_DEPLOYMENT" ]         && EMB_DEPLOYMENT="text-embedding-3-large"
+          [ -z "$EMB_DIMENSIONS" ]         && EMB_DIMENSIONS="3072"
 
           # Fail fast if critical values are still missing
           MISSING=""

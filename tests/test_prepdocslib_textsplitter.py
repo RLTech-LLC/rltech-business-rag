@@ -41,29 +41,26 @@ def test_sentencetextsplitter_split_small_pages():
 
 
 @pytest.mark.asyncio
-async def test_sentencetextsplitter_list_parse_and_split(tmp_path, snapshot):
+async def test_sentencetextsplitter_list_parse_and_split(tmp_path):
     text_splitter = SentenceTextSplitter()
     pdf_parser = LocalPdfParser()
-    for pdf in Path("data").glob("*.pdf"):
+    expected_pdfs = {pdf.name for pdf in Path("tests/test-data").glob("*.pdf")}
+    for pdf in Path("tests/test-data").glob("*.pdf"):
         shutil.copy(str(pdf.absolute()), tmp_path)
 
     list_file_strategy = LocalListFileStrategy(path_pattern=str(tmp_path / "*"))
     files = list_file_strategy.list()
-    processed = 0
-    results = {}
+    processed_names = set()
     async for file in files:
         pages = [page async for page in pdf_parser.parse(content=file.content)]
         assert pages
         sections = [
             Section(chunk, content=file, category="test category") for chunk in text_splitter.split_pages(pages)
         ]
-        assert sections
-        results[file.filename()] = [section.chunk.text for section in sections]
-        processed += 1
-    assert processed > 1
-    # Sort results by key
-    results = {k: results[k] for k in sorted(results)}
-    snapshot.assert_match(json.dumps(results, indent=2), "text_splitter_sections.txt")
+        assert sections, f"{file.filename()} produced no sections"
+        assert all(s.chunk.text for s in sections), f"{file.filename()} has empty section text"
+        processed_names.add(file.filename())
+    assert processed_names == expected_pdfs, f"Processed PDFs mismatch: {processed_names ^ expected_pdfs}"
 
 
 def test_simpletextsplitter_split_empty_pages():

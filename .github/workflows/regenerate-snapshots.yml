@@ -1,0 +1,43 @@
+name: Regenerate test snapshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to update snapshots on"
+        required: false
+        default: ""
+
+jobs:
+  regenerate:
+    name: Regenerate snapshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          version: "0.9.5"
+          cache-dependency-glob: "requirements**.txt"
+          python-version: "3.12"
+          activate-environment: true
+
+      - name: Install dependencies
+        run: uv pip install -r requirements-dev.txt
+
+      - name: Regenerate snapshots
+        run: pytest tests/test_prepdocslib_textsplitter.py::test_sentencetextsplitter_list_parse_and_split --snapshot-update -v
+
+      - name: Commit updated snapshots
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add tests/snapshots/
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: regenerate test snapshots for tests/test-data/ PDFs"
+          git push

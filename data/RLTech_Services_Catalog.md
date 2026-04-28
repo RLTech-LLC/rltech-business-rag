@@ -82,7 +82,7 @@ contractors without a dedicated IAM resource. Covers policy reviews, architectur
 incident triage support, and roadmap guidance.
 
 **Deliverables (monthly):**
-- Up to [X] hours of advisory access (defined per agreement)
+- Up to 8, 16, or 32 hours of advisory access per month (based on selected retainer tier — Lite / Standard / Fractional IAM Lead; see Rate Sheet)
 - Monthly status summary and recommendation memo
 - Policy and configuration review on request
 - Priority response to identity-related incidents

@@ -132,7 +132,7 @@ initial payment)
 
 **Estimated Completion Date:** [Date]
 
-**Total Duration:** Approximately [X] business days / [X] weeks / [X] months
+**Total Duration:** Approximately [Number] business days / [Number] weeks / [Number] months
 
 **Milestone Schedule:**
 

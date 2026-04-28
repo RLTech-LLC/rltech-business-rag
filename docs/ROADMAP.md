@@ -26,13 +26,19 @@ A ChatGPT-like assistant grounded in RLTech's own business documents — service
 ### Knowledge base contents (`data/`)
 | File | Type | Status |
 |---|---|---|
+| `RLTech_About_Us.md` | Company/founder profile, strategy, competitive positioning | ✅ Clean |
 | `RLTech_Capability_Statement.md` | Core capability doc | ✅ Clean |
-| `RLTech_Services_Catalog.md` | Services + micro-purchase packages | ⚠️ Has `[X]` placeholder (line 85) |
+| `RLTech_Services_Catalog.md` | Services + micro-purchase packages | ✅ Clean (placeholder fixed) |
 | `RLTech_Rate_Sheet.md` | T&M rates, fixed-price, retainers | ✅ Clean |
 | `RLTech_NDA_Template.md` | NDA template | ✅ Clean |
-| `RLTech_SOW_Template.md` | Statement of Work template | ⚠️ Has `[X]` placeholder (line 135) |
+| `RLTech_SOW_Template.md` | Statement of Work template | ✅ Clean (placeholder fixed) |
 | `RLTech_Teaming_Agreement_Template.md` | Teaming agreement template | ✅ Clean |
 | PDFs (W-9, EIN, CAGE/SAM, operating agreement, etc.) | Corporate registrations | ⚠️ Sensitive — verify repo visibility |
+| `reference/NIST_SP_800-207_Zero_Trust_Architecture.md` | ZTA tenets, logical components, federal alignment | ✅ Clean |
+| `reference/CISA_Zero_Trust_Maturity_Model_v2.md` | ZTMM pillars, maturity stages, Identity pillar detail | ✅ Clean |
+| `reference/OMB_M-22-09_Federal_Zero_Trust_Strategy.md` | Federal ZT mandate, phishing-resistant MFA requirements | ✅ Clean |
+| `reference/NIST_AI_RMF_1.0.md` | AI RMF functions, AI identity risks, federal AI requirements | ✅ Clean |
+| `reference/SC-300_Identity_Access_Administrator_Guide.md` | SC-300 study guide, all exam domains | ✅ Clean |
 
 ### Evaluation baselines
 Best configuration: **`gpt5chat-emb3l`** (gpt-5-chat + text-embedding-3-large)
